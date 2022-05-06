@@ -3,15 +3,16 @@
 import data
 
 
+# noinspection SpellCheckingInspection
 def main ():
     data.load_data ()
     write_init_en_html ()
     write_init_pt_html ()
     write_request_search_php(
-        'en',
-        'Search Result',
-        '<p>Could not establish a connection to the database server. Please try again later.</p>',
-        '"timestamp", "node_id", "longitude", "latitude", "gps error"',
+        language='en',
+        title='Search Result',
+        no_connection_database='<p>Could not establish a connection to the database server. Please try again later.</p>',
+        csv_header='"timestamp", "node_id", "longitude", "latitude", "gps error"',
         no_results='<p>Your search did not produced any result!',
         download_link='<p>Your search is ready to be {a_tag_open}downloaded{a_tag_close}.</p>',
         link_valid='<p>This link is valid for <em>24 hours</em>.</p>',
@@ -22,7 +23,7 @@ def main ():
         csv_header='"tempo", "id_nó", "longitude", "latitude", "erro_GPS"',
         no_connection_database='<p>Não foi possível estabelecer ligação à base de dados.  Tente mais tarde.</p>',
         no_results='<p>A sua pesquisa não devolveu resultados!</p>',
-        download_link='<p>A sua pesquisa está pronta para ser {a_tag_open}descarregada{a_tag_close}</a>.</p>',
+        download_link='<p>A sua pesquisa está pronta para ser {a_tag_open}descarregada{a_tag_close}.</p>',
         link_valid='<p>Esta ligação é válida durante <em>24 horas</em>.</p>',
     )
     write_request_subscribe_php (
@@ -56,6 +57,7 @@ Vão ser enviados mensagens periodicamente para o endereço " . $safe_email . " 
     )
 
 
+# noinspection SpellCheckingInspection
 def write_init_en_html ():
     with open ('/var/www/html/index.en.html', 'w') as fd:
         fd.write ('''<!DOCTYPE html>
@@ -208,6 +210,7 @@ def write_init_en_html ():
 ''')
 
 
+# noinspection SpellCheckingInspection
 def write_init_pt_html ():
     with open ('/var/www/html/index.en.html', 'w') as fd:
         fd.write ('''<!DOCTYPE html>
@@ -391,7 +394,7 @@ $data_sql = array (
             if a_data.subscribe_flag:
                 fd.write ('\n   "{}" => "{}",'.format (
                     a_data.sql_identifier,
-                    a_data.__get_attr__ ('description_{}'.format (language))
+                    a_data.__getattribute__ ('description_{}'.format (language))
                 ))
         fd.write ('''
 );
@@ -415,7 +418,7 @@ foreach ($data_sql as $key => $value) {
 }
 fputcsv ($csv_handle, $header);
 // Connecting, selecting database
-$db_connection = pg_connect ("dbname=sensor_data user=expolis_app");
+$db_connection = pg_connect ("dbname=sensor_data user=expolis_php");
 if (!$db_connection) {
     echo "''')
         fd.write (no_connection_database)
@@ -436,7 +439,7 @@ else {
     $query .= "\nFROM measurement_properties";
     foreach ($data_sql as $key => $value) {
         $query .= "
-    INNER JOIN measurement_data_" . $key . " ON measurement_properties.ID = measurement_" . $key . ".mpID";
+    INNER JOIN measurement_data_" . $key . " ON measurement_properties.ID = measurement_data_" . $key . ".mpID";
     }
     // function to compute date
     function compute_date ($prefix) {
@@ -512,7 +515,7 @@ else {
     else {
         echo "''')
         fd.write (download_link.format (
-                  a_tag_open='<a href="\', substr ($csv_filename, 14), \'">',
+                  a_tag_open='<a href=\\"" . substr ($csv_filename, 14) . "\\">',
                   a_tag_close='</a>'))
         fd.write ('''";
         echo "''')
@@ -567,7 +570,7 @@ if ($email === FALSE) {
         fd.write ('''";
 }
 else {
-    $db_connection = pg_connect ("dbname=sensor_data user=expolis_admin");
+    $db_connection = pg_connect ("dbname=sensor_data user=expolis_php");
     if ($db_connection === FALSE) {
         echo "''')
         fd.write (no_connection_database)
@@ -637,3 +640,7 @@ else {
     </body>
 </html>
 ''')
+
+
+if __name__ == '__main__':
+    main ()
