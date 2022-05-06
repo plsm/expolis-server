@@ -12,6 +12,7 @@ The variable `METHODS` contains a list of interpolation methods that are used in
 
 from typing import Callable, List
 
+import osrm_raster
 from resolution import Resolution
 
 
@@ -40,12 +41,13 @@ class Method:
 def __kriging_command_line_arguments__ (
         resolution: Resolution
 ) -> List[str]:
+    config_osrm_raster = osrm_raster.load_config_osrm_raster ()
     return [
         '/opt/expolis/bin/interpolator-kriging',
-        '--min-longitude', '-9.258299',
-        '--max-longitude', '-8.895191',
-        '--min-latitude', '38.397111',
-        '--max-latitude', '38.703961',
+        '--min-longitude', str (config_osrm_raster.min_longitude),
+        '--max-longitude', str (config_osrm_raster.max_longitude),
+        '--min-latitude', str (config_osrm_raster.min_latitude),
+        '--max-latitude', str (config_osrm_raster.max_latitude),
         '--grid-cell-size', '{}'.format (min (resolution.cell_longitude_size, resolution.cell_latitude_size)),
     ]
 
