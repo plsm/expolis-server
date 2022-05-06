@@ -8,6 +8,7 @@ import os
 import os.path
 import signal
 import sys
+import time
 from typing import Optional, Any
 
 import paho.mqtt.client
@@ -34,6 +35,16 @@ The mqtt client instance used to connect to the mqtt broker."""
 mqtt_running = False
 """
 Flag that indicates if the mqtt client is running.
+"""
+
+WAIT_CONNECTION_DATABASE = 10
+"""
+Time to wait before connecting to PostgreSQL database. Unit is seconds.
+"""
+
+WAIT_RETRIAL = 5
+"""
+Time to wait before retrying to connect to MQTT broker. Unit is seconds.
 """
 
 CONNECTION_RESULT = {
@@ -86,15 +97,31 @@ def start ():
     if fork_result == 0:
         global mqtt_client
         mqtt_client = paho.mqtt.client.Client (
-            client_id='ExpoLIS_manager',
+            client_id='ExpoLIS_mqtt_interface',
             clean_session=False,
         )
         mqtt_client.on_message = __on_message
         mqtt_client.on_connect = __on_connect
-        mqtt_client.connect (MQTT_BROKER_ADDRESS)
-        missing_data.start_request_missing_data_timer (mqtt_client)
-        mqtt_client.loop_start ()
-        signal.signal (signal.SIGTERM, __terminate_mqtt_client)
+        mqtt_client.on_disconnect = __on_disconnect
+        connected = False
+        trial = 0
+        while trial < 5 and not connected:
+            try:
+                mqtt_client.connect (MQTT_BROKER_ADDRESS)
+                connected = True
+            except Exception as e:
+                trial += 1
+                log_message ('Connection failed with: {}'.format (e))
+                log_message ('Retrying in {} seconds'.format (WAIT_RETRIAL))
+                time.sleep (WAIT_RETRIAL)
+        if connected:
+            missing_data.start_request_missing_data_timer (mqtt_client)
+            mqtt_client.loop_start ()
+            signal.signal (signal.SIGTERM, __terminate_mqtt_client)
+        else:
+            if os.path.exists (MQTT_INTERFACE_PID_FILE):
+                log_message ('Removing file with PID of ExpoLIS MQTT interface process')
+                os.unlink (MQTT_INTERFACE_PID_FILE)
     else:
         if not os.path.exists (os.path.dirname (MQTT_INTERFACE_PID_FILE)):
             os.makedirs (os.path.dirname (MQTT_INTERFACE_PID_FILE))
@@ -164,23 +191,27 @@ def __on_connect (
     """
     log_message (CONNECTION_RESULT [rc])
     if rc == 0:
+        log_message ('Waiting {}s before establishing connection to database...'.format (WAIT_CONNECTION_DATABASE))
+        time.sleep (WAIT_CONNECTION_DATABASE)
         db = Database ()
-        sql_statement = 'SELECT ID FROM node_sensors'
+        log_message ('Connected to database')
+        sql_statement = 'SELECT mqtt_topic_number FROM node_sensors'
         db.cursor.execute (sql_statement)
         for row in db.cursor:
             topic = __mqtt_sensor_node_data_topic (row[0])
+            log_message ('Subscribing to topic {}'.format (row[0]))
             client.subscribe (topic, qos=2)
 
 
 def __mqtt_sensor_node_data_topic (
-        sensor_node_id: int,
+        mqtt_topic_number: int,
 ) -> str:
     """
     Returns the mqtt topic to receive data from the given sensor node id.
-    :param sensor_node_id: the sensor node id.
+    :param mqtt_topic_number: the sensor node id.
     :return: a string representing the mqtt topic.
     """
-    return 'expolis_project/sensor_nodes/sn_{}'.format (sensor_node_id)
+    return 'expolis_project/sensor_nodes/sn_{}'.format (mqtt_topic_number)
 
 
 def __on_message (
@@ -217,6 +248,11 @@ def __on_message (
     except IndexError:
         log_message ('Contents of MQTT message changed:\n{}'.format (str (message)))
         return
+
+
+def __on_disconnect (client, userdata, rc):
+    if rc != 0:
+        log_message ('Unexpected disconnection. {}'.format (paho.mqtt.client.connack_string (rc)))
 
 
 def log_message (msg: str):
