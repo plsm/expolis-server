@@ -16,6 +16,7 @@ from typing import Optional
 
 import data
 import interpolation_method
+from interpolation import INTERPOLATION_PERIOD, INTERPOLATION_RESOLUTION, INTERPOLATION_STATISTIC
 import period
 import resolution
 import aggregation
@@ -24,10 +25,6 @@ DATABASE = 'sensor_data'
 ROLE_ADMIN = 'expolis_admin'
 ROLE_APP = 'expolis_app'
 ROLE_PHP = 'expolis_php'
-
-INTERPOLATION_RESOLUTION = resolution.FIFTY_METERS  # type: resolution.Resolution
-INTERPOLATION_STATISTIC = aggregation.AVG  # type: aggregation.Statistic
-INTERPOLATION_PERIOD = period.DAILY  # type: period.Period
 
 
 def main ():
@@ -96,13 +93,13 @@ CREATE TABLE {table_measurement} (
     )
     if mobile_app_flag or route_planner_flag:
         for s in aggregation.STATISTICS:
-            if not mobile_app_flag and route_planner_flag and s != INTERPOLATION_STATISTIC:
+            if not mobile_app_flag and (not route_planner_flag or s != INTERPOLATION_STATISTIC):
                 continue
             for p in period.PERIODS:
-                if not mobile_app_flag and route_planner_flag and p != INTERPOLATION_PERIOD:
+                if not mobile_app_flag and (not route_planner_flag or p != INTERPOLATION_PERIOD):
                     continue
                 for r in resolution.RESOLUTIONS:
-                    if not mobile_app_flag and route_planner_flag and r != INTERPOLATION_RESOLUTION:
+                    if not mobile_app_flag and (not route_planner_flag or r != INTERPOLATION_RESOLUTION):
                         continue
                     sql_commands += '''
 CREATE TABLE {table_name} (
@@ -429,7 +426,7 @@ GRANT SELECT ON TABLE {table_measurement} TO {role_php};
 
 def process_arguments ():
     parser = argparse.ArgumentParser (
-        descripton='Add a new sensor data to the ExpoLIS server',
+        description='Add a new sensor data to the ExpoLIS server',
     )
     parser.add_argument (
         'identifier',

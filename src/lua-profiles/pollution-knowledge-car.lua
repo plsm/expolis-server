@@ -12,7 +12,7 @@ Utils = require("lib/utils")
 Measure = require("lib/measure")
 
 function setup()
-  pollution = require ('lib/pollution')
+  pollution = require ('lib/pollution') ("config-osrm-raster", "pollution-knowledge.raster")
   return {
     properties = {
       max_speed_for_map_matching      = 180/3.6, -- 180kmph -> m/s

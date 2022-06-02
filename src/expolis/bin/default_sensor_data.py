@@ -46,7 +46,7 @@ new_sensor_data (
     sql_type='real',
     description_en='nitric oxide 2/2',
     description_pt='óxido nitrico 2/2',
-    mobile_app_flag=True,
+    mobile_app_flag=False,
     route_planner_flag=True,
     subscribe_flag=True,
     pollution_profile_m=1,

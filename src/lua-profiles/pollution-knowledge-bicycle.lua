@@ -12,7 +12,7 @@ Measure = require("lib/measure")
 function setup()
   local default_speed = 15
   local walking_speed = 4
-  pollution = require ('lib/pollution')
+  pollution = require ('lib/pollution') ("config-osrm-raster", "pollution-knowledge.raster")
 
   return {
     properties = {

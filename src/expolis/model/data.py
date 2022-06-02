@@ -80,6 +80,12 @@ class Data:
             self.pollution_profile_m = pollution_profile_m
             self.pollution_profile_b = pollution_profile_b
 
+    def java_identifier (self) -> str:
+        return self.sql_identifier.capitalize ()
+
+    def java_enum (self) -> str:
+        return self.sql_identifier.upper()
+
     def table_measurement_name (self) -> str:
         return 'measurement_data_{sql_identifier}'.format (
             sql_identifier=self.sql_identifier
@@ -131,7 +137,14 @@ class Data:
 DATA = []  # type: List[Data]
 
 
-def load_data ():
+def load_data () -> None:
+    """
+    Loads the sensor data information to global variable DATA.
+
+    The DATA variable is a list containing information about data collected by all sensor nodes.
+    This data is stored in the database.
+    It can be used in the route planner and/or in the mobile app, and it can be subscribed by any user.
+    """
     global DATA
     with open ('/opt/expolis/etc/sensor_data', 'r') as fd:
         sensor_data = yaml.safe_load (fd)

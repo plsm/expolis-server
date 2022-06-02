@@ -82,6 +82,7 @@ CREATE TABLE node_sensors (
        ID SERIAL PRIMARY KEY,
        busID INTEGER REFERENCES bus (ID) ON DELETE CASCADE,
        serial_description TEXT NOT NULL UNIQUE,
+       is_mobile BOOLEAN NOT NULL,
        deployed TIMESTAMP DEFAULT (current_timestamp) NOT NULL,
        mqtt_topic_number INTEGER NOT NULL UNIQUE,
        UNIQUE (busID, deployed)

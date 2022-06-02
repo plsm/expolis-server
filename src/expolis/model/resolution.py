@@ -50,12 +50,19 @@ HUNDRED_METERS = Resolution (
     cell_longitude_size=0.00125914938003,
 )
 
+THOUSAND_METERS = Resolution (
+    sql_identifier='thousand_meters',
+    description='1000m',
+    cell_latitude_size=0.0090082251600340,
+    cell_longitude_size=0.0114938390815770 ,
+)
+
 RESOLUTIONS = [
-    FIFTY_METERS,
     HUNDRED_METERS,
+    THOUSAND_METERS,
 ]
 
 RESOLUTION_DICT = {
-    '50': FIFTY_METERS,
     '100': HUNDRED_METERS,
+    '1000': THOUSAND_METERS,
 }

@@ -9,7 +9,7 @@ find_access_tag = require("lib/access").find_access_tag
 
 function setup()
     local walking_speed = 5
-	 pollution = require ('lib/pollution')
+	pollution = require ('lib/pollution') ("config-osrm-raster", "pollution-sensor.raster")
     return {
         properties = {
             weight_name = 'duration',

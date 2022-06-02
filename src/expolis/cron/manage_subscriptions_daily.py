@@ -129,12 +129,12 @@ WHERE
 ORDER BY when_
 '''.format (
             fields=',\n    '.join ([
-                'measurement_{}.value'.format (d.sql_identifier)
+                'measurement_data_{}.value'.format (d.sql_identifier)
                 for d in fields
             ]),
             tables='\n    '.join ([
-                'INNER JOIN measurement_{sql_identifier} '
-                'ON measurement_properties.ID = measurement_{sql_identifier}.mpID'.format (
+                'INNER JOIN measurement_data_{sql_identifier} '
+                'ON measurement_properties.ID = measurement_data_{sql_identifier}.mpID'.format (
                     sql_identifier=d.sql_identifier
                 )
                 for d in fields

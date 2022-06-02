@@ -3,11 +3,7 @@
 import datetime
 from typing import TextIO
 
-import aggregation
-import resolution
-
-INTERPOLATION_RESOLUTION = resolution.FIFTY_METERS  # type: resolution.Resolution
-INTERPOLATION_STATISTIC = aggregation.AVG  # type: aggregation.Statistic
+from interpolation import INTERPOLATION_RESOLUTION, INTERPOLATION_STATISTIC
 
 
 def main (fd_log: TextIO):

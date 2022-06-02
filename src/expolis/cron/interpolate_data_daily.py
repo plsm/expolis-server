@@ -13,16 +13,11 @@ import psycopg2.extensions
 from typing.io import TextIO
 
 import data
-import aggregation
-import resolution
 from data import Data
 from database import Database
 from interpolation_method import METHODS, Method
 from interpolation_period import PeriodDaily
-
-
-INTERPOLATION_RESOLUTION = resolution.FIFTY_METERS  # type: resolution.Resolution
-INTERPOLATION_STATISTIC = aggregation.AVG  # type: aggregation.Statistic
+from interpolation import INTERPOLATION_RESOLUTION, INTERPOLATION_STATISTIC
 
 
 class SendDataThread (threading.Thread):
@@ -46,11 +41,6 @@ class SendDataThread (threading.Thread):
 
     def run (self):
         print ('Started send data thread')
-        # table_name = 'aggregation_' \
-        #              + INTERPOLATION_STATISTIC.sql_function + '_' \
-        #              + PeriodDaily.enum.sql_identifier + '_' \
-        #              + INTERPOLATION_RESOLUTION.sql_identifier + '_' \
-        #              + self.data.sql_identifier
         table_name = self.data.table_aggregation_name (
             s=INTERPOLATION_STATISTIC,
             p=PeriodDaily.enum,
@@ -89,11 +79,6 @@ class SaveDataThread (threading.Thread):
         self.cursor = cursor
         self.interpolation_process = interpolation_process
         self.period = period
-        # self.table_name = 'interpolation_{method_sql_identifier}_{period_sql_identifier}_{data_sql_identifier}'.format (
-        #     method_sql_identifier=method.sql_identifier,
-        #     period_sql_identifier=period.sql_identifier,
-        #     data_sql_identifier=the_data.sql_identifier,
-        # )
         self.table_name = the_data.table_interpolation_name (
             m=method,
             p=period.enum,
@@ -136,7 +121,7 @@ def main (fd_log: TextIO):
         interpolation_process_command_line = method.command_line_arguments (
             resolution=INTERPOLATION_RESOLUTION)
         for a_data in data.DATA:
-            if not a_data.route_planner_flag or not a_data.mobile_app_flag:
+            if not a_data.route_planner_flag and not a_data.mobile_app_flag:
                 continue
             number_rows = number_measurements_in_period (
                 period=period,

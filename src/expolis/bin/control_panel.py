@@ -130,7 +130,7 @@ def data_overview ():
 def reset_data_intervals ():
     disable_curses ()
     command = [
-        '/etc/init.d/expolis_mqtt_interface.sh',
+        '/etc/init.d/expolis_mqtt_interface',
         'stop',
     ]
     process = subprocess.Popen (command)
@@ -140,7 +140,7 @@ def reset_data_intervals ():
     if os.path.exists ('/var/lib/expolis/message_intervals'):
         os.remove ('/var/lib/expolis/message_intervals')
     command = [
-        '/etc/init.d/expolis_mqtt_interface.sh',
+        '/etc/init.d/expolis_mqtt_interface',
         'start',
     ]
     process = subprocess.Popen (command)
@@ -156,7 +156,7 @@ def start_stop_mqtt_interface_service ():
     disable_curses ()
     if os.path.exists (mqtt_interface.MQTT_INTERFACE_PID_FILE):
         command = [
-            '/etc/init.d/expolis_mqtt_interface.sh',
+            '/etc/init.d/expolis_mqtt_interface',
             'stop',
         ]
         process = subprocess.Popen (command)
@@ -165,7 +165,7 @@ def start_stop_mqtt_interface_service ():
             new_log ('A problem occurred while stopping the MQTT interface service')
     else:
         command = [
-            '/etc/init.d/expolis_mqtt_interface.sh',
+            '/etc/init.d/expolis_mqtt_interface',
             'start',
         ]
         process = subprocess.Popen (command)

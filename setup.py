@@ -9,7 +9,8 @@ from typing import List
 
 import yaml
 
-DATABASE = 'sensor_data'
+DATABASE_SENSOR = 'sensor_data'
+DATABASE_OSM = 'osm_data'
 ROLE_ADMIN = 'expolis_admin'
 ROLE_APP = 'expolis_app'
 ROLE_PHP = 'expolis_php'
@@ -36,6 +37,7 @@ def setup_tree_folder_structure ():
         '/var/lib/expolis',
         '/var/lib/expolis/osrm',
         '/var/log/expolis',
+        '/var/www/html/dataset',
     ]
     for a_folder in folders:
         print (a_folder)
@@ -51,6 +53,7 @@ def copy_model_files ():
         'period.py',
         'resolution.py',
         'aggregation.py',
+        'osrm_raster.py',
     ]
     for a_file in files:
         shutil.copy (
@@ -156,15 +159,15 @@ def copy_init_files ():
                 source_folder,
                 'src/expolis/init/' + a_file
             ),
-            '/etc/init.d/' + a_file
+            '/etc/init.d/' + a_file[:-3]
         )
 
 
 def setup_init_scripts ():
     print ('Setup init scripts...')
     services = [
-        'expolis_osrm_server.sh',
-        'expolis_mqtt_interface.sh',
+        'expolis_osrm_server',
+        'expolis_mqtt_interface',
     ]
     for a_service in services:
         os.chmod (
@@ -207,50 +210,61 @@ def init_osrm_config ():
             {
                 'profile': '/opt/expolis/etc/osrm/normal-bicycle.lua',
                 'folder': '/var/lib/expolis/osrm/profile-normal-bicycle',
-                'port': 30001,
-                'depends_pollution': False,
+                'port': 50101,
+                'pollution': None,
             },
             {
                 'profile': '/opt/expolis/etc/osrm/normal-car.lua',
                 'folder': '/var/lib/expolis/osrm/profile-normal-car',
-                'port': 30002,
-                'depends_pollution': False,
+                'port': 50102,
+                'pollution': None,
             },
             {
                 'profile': '/opt/expolis/etc/osrm/normal-foot.lua',
                 'folder': '/var/lib/expolis/osrm/profile-normal-foot',
-                'port': 30003,
-                'depends_pollution': False,
+                'port': 50103,
+                'pollution': None,
             },
             {
-                'profile': '/opt/expolis/etc/osrm/pollution-bicycle.lua',
-                'folder': '/var/lib/expolis/osrm/profile-pollution-bicycle',
-                'port': 30011,
-                'depends_pollution': True,
+                'profile': '/opt/expolis/etc/osrm/pollution-sensor-bicycle.lua',
+                'folder': '/var/lib/expolis/osrm/profile-pollution-sensor-bicycle',
+                'port': 50201,
+                'pollution': 'sensor',
             },
             {
-                'profile': '/opt/expolis/etc/osrm/pollution-car.lua',
-                'folder': '/var/lib/expolis/osrm/profile-pollution-car',
-                'port': 30012,
-                'depends_pollution': True,
+                'profile': '/opt/expolis/etc/osrm/pollution-sensor-car.lua',
+                'folder': '/var/lib/expolis/osrm/profile-pollution-sensor-car',
+                'port': 50202,
+                'pollution': 'sensor',
             },
             {
-                'profile': '/opt/expolis/etc/osrm/normal-foot.lua',
-                'folder': '/var/lib/expolis/osrm/profile-pollution-foot',
-                'port': 30013,
-                'depends_pollution': True,
+                'profile': '/opt/expolis/etc/osrm/pollution-sensor-foot.lua',
+                'folder': '/var/lib/expolis/osrm/profile-pollution-sensor-foot',
+                'port': 50203,
+                'pollution': 'sensor',
+            },
+            {
+                'profile': '/opt/expolis/etc/osrm/pollution-knowledge-bicycle.lua',
+                'folder': '/var/lib/expolis/osrm/profile-pollution-knowledge-bicycle',
+                'port': 50301,
+                'pollution': 'knowledge',
+            },
+            {
+                'profile': '/opt/expolis/etc/osrm/pollution-knowledge-car.lua',
+                'folder': '/var/lib/expolis/osrm/profile-pollution-knowledge-car',
+                'port': 50302,
+                'pollution': 'knowledge',
+            },
+            {
+                'profile': '/opt/expolis/etc/osrm/pollution-knowledge-foot.lua',
+                'folder': '/var/lib/expolis/osrm/profile-pollution-knowledge-foot',
+                'port': 50303,
+                'pollution': 'knowledge',
             },
         ]
     }
     with open ('/opt/expolis/etc/config-osrm', 'w') as fd:
         yaml.safe_dump (config, fd)
-    run_command ([
-        '/usr/bin/curl',
-        config ['map_url'],
-        '--silent',
-        '--show-error',
-        '--output', config ['map_path']
-    ])
     for a_routing in config ['routing']:
         os.makedirs (
             name=a_routing ['folder'],
@@ -279,19 +293,10 @@ def init_osrm_config ():
             os.path.join (lua_profiles_lib, file),
             '/opt/expolis/etc/osrm/lib'
         )
+    return config
 
 
-def create_raster_image_for_osrm ():
-    with open ('/var/lib/expolis/osrm/pollution.raster', 'w') as fd_pollution:
-        for x in range (551):
-            for y in range (651):
-                fd_pollution.write ('0 ')
-            fd_pollution.write ('\n')
-
-
-def download_osrm_data ():
-    with open ('/opt/expolis/etc/config-osrm', 'r') as fd_config_osrm:
-        config = yaml.safe_load (fd_config_osrm)
+def download_osrm_data (config):
     print ('Downloading OSM data...')
     run_command ([
         '/usr/bin/curl',
@@ -300,9 +305,35 @@ def download_osrm_data ():
         '--show-error',
         '--output', config ['map_path']
     ])
+
+
+def create_raster_image_for_osrm ():
+    num_rows = 3
+    num_cols = 3
+    with open ('/opt/expolis/etc/config-osrm-raster', 'w') as fd:
+        fd.write ('''\
+0 0
+1 1
+{num_rows} {num_cols}
+0.5 0.5
+'''.format (
+            num_rows=num_rows,
+            num_cols=num_cols,
+        ))
+    # create initial raster images.
+    for filename in ['pollution-knowledge.raster', 'pollution-sensor.raster']:
+        path = '/var/lib/expolis/osrm/' + filename
+        with open (path, 'w') as fd_pollution:
+            for x in range (num_rows):
+                for y in range (num_cols):
+                    fd_pollution.write ('0 ')
+                fd_pollution.write ('\n')
+
+
+def process_osrm_data (config):
     for a_routing in config ['routing']:
-        if a_routing ['depends_pollution']:
-            continue
+#        if a_routing ['pollution'] is None:
+#            continue
         # path to the symbolic link in the folder where this profile files are stored
         map_path = os.path.join (a_routing ['folder'], os.path.basename (config ['map_path']))
         print ('Processing LUA profile {} in folder {}'.format (
@@ -364,6 +395,8 @@ def copy_bin_files ():
         'new_sensor_data.py',
         'update_website.py',
         'control_panel.py',
+        'compare_csv_with_database.py',
+        'update_knowledge_based_osrm_servers.py',
     ]
     for a_file in bin_files:
         shutil.copy (
@@ -380,7 +413,7 @@ def copy_bin_files ():
         )
         os.symlink (
             python_file,
-            '/usr/bin/expolis_' + a_file,
+            '/usr/bin/expolis_' + a_file [:-3],
         )
 
 
@@ -391,22 +424,24 @@ def create_database ():
         '/usr/bin/sudo -u postgres createuser {} --pwprompt'.format (ROLE_ADMIN),
         '/usr/bin/sudo -u postgres createuser {}'.format (ROLE_APP),
         '/usr/bin/sudo -u postgres createuser {}'.format (ROLE_PHP),
-        '/usr/bin/sudo -u postgres createdb -O {} {}'.format (ROLE_ADMIN, DATABASE),
+        '/usr/bin/sudo -u postgres createdb -O {} {}'.format (ROLE_ADMIN, DATABASE_SENSOR),
+        '/usr/bin/sudo -u postgres createdb -O {} {}'.format (ROLE_ADMIN, DATABASE_OSM),
     ]
     for a_command in commands:
         run_command (
             command_line=a_command.split (' ')
         )
-    run_command (
-        [
-            '/usr/bin/sudo',
-            '-u', 'postgres',
-            'psql',
-            '-U', 'postgres',
-            '-d', DATABASE
-        ],
-        pipe_input='CREATE EXTENSION postgis;\n'
-    )
+    for db in [DATABASE_SENSOR, DATABASE_OSM]:
+        run_command (
+            [
+                '/usr/bin/sudo',
+                '--user', 'postgres',
+                'psql',
+                '--username', 'postgres',
+                '--dbname', db
+            ],
+            pipe_input='CREATE EXTENSION postgis;\n'
+        )
     fd_pg_hba_conf = tempfile.NamedTemporaryFile (
         prefix='pg_hba_',
         suffix='.conf',
@@ -423,10 +458,16 @@ local  {database}  {role_php}               trust
 host   {database}  {role_app}    0.0.0.0/0  trust
 host   {database}  {role_app}    ::0/0      trust
 '''.format (
-        database=DATABASE,
+        database=DATABASE_SENSOR,
         role_admin=ROLE_ADMIN,
         role_app=ROLE_APP,
         role_php=ROLE_PHP,
+    ))
+    fd_pg_hba_conf.write ('''\
+local  {database}  {role_admin}             trust
+'''.format (
+        database=DATABASE_OSM,
+        role_admin=ROLE_ADMIN,
     ))
     fd_pg_hba_conf.close ()
     # noinspection SpellCheckingInspection
@@ -446,12 +487,12 @@ host   {database}  {role_app}    ::0/0      trust
         '-u', 'postgres',
         'psql',
         '-U', ROLE_ADMIN,
-        '-d', DATABASE,
+        '-d', DATABASE_SENSOR,
         '--file', os.path.join (source_folder, 'src/database/setup_database.sql')
     ])
     with open ('/opt/expolis/etc/config-database', 'w') as fd:
         fd.write ('{}\n{}\n{}\n'.format (
-            DATABASE,
+            DATABASE_SENSOR,
             ROLE_ADMIN,
             getpass.getpass ('Password of ExpoLIS database administrator? ')
         ))
@@ -470,13 +511,13 @@ def install_interpolator_binaries ():
     run_command (
         command_line=[
             '/usr/bin/g++',
-            '-I' + os.path.join (source_folder, 'interpolator/common'),
-            '-I' + os.path.join (source_folder, 'interpolator/nr'),
+            '-I' + os.path.join (source_folder, 'src/interpolator/common'),
+            '-I' + os.path.join (source_folder, 'src/interpolator/nr'),
             '-Wall',
-            os.path.join (source_folder, 'interpolator/kriging/main_kriging.cpp'),
-            os.path.join (source_folder, 'interpolator/common/data.cpp'),
-            os.path.join (source_folder, 'interpolator/common/log.cpp'),
-            os.path.join (source_folder, 'interpolator/common/options.cpp'),
+            os.path.join (source_folder, 'src/interpolator/kriging/main_kriging.cpp'),
+            os.path.join (source_folder, 'src/interpolator/common/data.cpp'),
+            os.path.join (source_folder, 'src/interpolator/common/log.cpp'),
+            os.path.join (source_folder, 'src/interpolator/common/options.cpp'),
             '-o', '/opt/expolis/bin/interpolator-kriging',
             '-lm',
             '-lboost_program_options'
@@ -516,9 +557,10 @@ if __name__ == '__main__':
     create_database ()
     initialise_sensor_data ()
     install_osrm ()
-    init_osrm_config ()
+    cfg_osrm = init_osrm_config ()
+    download_osrm_data (cfg_osrm)
     create_raster_image_for_osrm ()
-    download_osrm_data ()
+    process_osrm_data (cfg_osrm)
     setup_mail_configuration ()
     copy_website_files ()
     copy_bin_files ()
