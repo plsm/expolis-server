@@ -68,6 +68,17 @@ def create_sensor_nodes ():
     def read_input (prompt, default):
         result = input ('{} [{}]? '.format (prompt, default))
         return default if result == '' else result
+
+    def read_boolean (prompt):
+        while True:
+            result = input (prompt)
+            if result.upper() in ['Y', 'YES']:
+                return True
+            elif result.upper() in ['N', 'NO']:
+                return False
+            else:
+                print ('Please enter either (y)es or (n)o!')
+
     disable_curses ()
     number_nodes = read_int ('How many sensor nodes? ')
     db = database.Database ()
@@ -93,6 +104,9 @@ def create_sensor_nodes ():
                 'serial_description': read_input (
                     'Serial description of sensor #{}'.format (index_item),
                     'virtual sensor node #{}'.format (index_node)
+                ),
+                'is_mobile': read_boolean (
+                    'Is sensor #{} mobile? (y/n)'.format (index_item)
                 ),
                 'mqtt_topic_number': read_int (
                     'MQTT topic of sensor #{}? '.format (index_item)

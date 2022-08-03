@@ -168,14 +168,15 @@ $$;
 CREATE FUNCTION insert_node_sensors (
     IN bus_id INTEGER,
     IN serial_description TEXT,
+    IN is_mobile BOOLEAN,
     IN mqtt_topic_number INTEGER,
     IN deployed TIMESTAMP DEFAULT current_timestamp
 ) RETURNS BIGINT
 LANGUAGE sql
 AS
 $$
-    INSERT INTO node_sensors (busID, serial_description, deployed, mqtt_topic_number)
-        VALUES (bus_id, serial_description, deployed, mqtt_topic_number);
+    INSERT INTO node_sensors (busID, serial_description, is_mobile, deployed, mqtt_topic_number)
+        VALUES (bus_id, serial_description, is_mobile, deployed, mqtt_topic_number);
     SELECT currval ('node_sensors_ID_seq');
 $$;
 

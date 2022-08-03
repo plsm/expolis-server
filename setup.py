@@ -49,6 +49,7 @@ def copy_model_files ():
     print ('Copying model files...')
     files = [
         'data.py',
+        'interpolation.py',
         'interpolation_method.py',
         'period.py',
         'resolution.py',
@@ -183,9 +184,9 @@ def install_osrm ():
     print ('...installing dependencies')
     save_dir = os.getcwd ()
     # noinspection SpellCheckingInspection
-    run_command ('/usr/bin/apt install build-essential git cmake pkg-config libbz2-dev libxml2-dev libzip-dev '
-                 'libboost-all-dev lua5.2 liblua5.2-dev libtbb-dev'.split (' '))
-    run_command ('/usr/bin/apt install curl'.split (' '))
+    # run_command ('/usr/bin/apt install build-essential git cmake pkg-config libbz2-dev libxml2-dev libzip-dev '
+    #             'libboost-all-dev lua5.2 liblua5.2-dev libtbb-dev'.split (' '))
+    # run_command ('/usr/bin/apt install curl'.split (' '))
     os.chdir ('/tmp')
     run_command ('/usr/bin/git clone https://github.com/Project-OSRM/osrm-backend'.split (' '))
     print ('...building OSRM')
@@ -370,13 +371,19 @@ def copy_website_files ():
     conf_files = [
         'apache2.conf',
         'ports.conf',
-        'sites-enabled_000-default.conf',
+        'sites-enabled/000-default.conf',
     ]
     for a_file in conf_files:
-        shutil.copy (
-            os.path.join (source_folder, 'src/website/conf/' + a_file),
-            '/etc/apache2')
-        print ('  {} => /etc/apache2'.format (a_file))
+        if os.path.exists ('/etc/apache2/' + a_file):
+            if not os.path.exists ('/etc/apache2/' + a_file + '.before.expolis'):
+                shutil.move (
+                    '/etc/apache2/' + a_file,
+                    '/etc/apache2/' + a_file + '.before.expolis'
+                )
+            shutil.copy (
+                os.path.join (source_folder, 'src/website/conf/' + a_file),
+                '/etc/apache2')
+            print ('  {} => /etc/apache2'.format (a_file))
     html_files = [
         'expolis.css',
         'index.en.html',
@@ -391,12 +398,15 @@ def copy_website_files ():
 
 def copy_bin_files ():
     bin_files = [
-        'default_sensor_data.py',
-        'new_sensor_data.py',
-        'update_website.py',
-        'control_panel.py',
         'compare_csv_with_database.py',
+        'control_panel.py',
+        'default_sensor_data.py',
+        'delete_data.py',
+        'generate_mobile_app_source_code.py',
+        'insert_csv_into_database.py',
+        'new_sensor_data.py',
         'update_knowledge_based_osrm_servers.py',
+        'update_website.py',
     ]
     for a_file in bin_files:
         shutil.copy (
@@ -431,6 +441,7 @@ def create_database ():
         run_command (
             command_line=a_command.split (' ')
         )
+    input ('Press ENTER to create postgis extension:')
     for db in [DATABASE_SENSOR, DATABASE_OSM]:
         run_command (
             [
